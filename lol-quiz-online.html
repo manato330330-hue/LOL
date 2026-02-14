@@ -1,0 +1,1592 @@
+<!DOCTYPE html>
+<html lang="ja">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>LoL早押しクイズ - オンライン対戦</title>
+    <style>
+        @import url('https://fonts.googleapis.com/css2?family=Orbitron:wght:700;900&family=Noto+Sans+JP:wght@400;700&display=swap');
+        
+        * {
+            margin: 0;
+            padding: 0;
+            box-sizing: border-box;
+        }
+
+        :root {
+            --gold: #C89B3C;
+            --dark-blue: #0A1428;
+            --blue: #0BC4E2;
+            --purple: #A855F7;
+            --red: #EF4444;
+            --green: #10B981;
+            --orange: #F97316;
+        }
+
+        body {
+            font-family: 'Noto Sans JP', sans-serif;
+            background: linear-gradient(135deg, #0A1428 0%, #1a2744 50%, #0A1428 100%);
+            color: white;
+            min-height: 100vh;
+            overflow-x: hidden;
+        }
+
+        body::before {
+            content: '';
+            position: fixed;
+            top: 0;
+            left: 0;
+            width: 100%;
+            height: 100%;
+            background: 
+                radial-gradient(circle at 20% 80%, rgba(168, 85, 247, 0.15) 0%, transparent 50%),
+                radial-gradient(circle at 80% 20%, rgba(11, 196, 226, 0.15) 0%, transparent 50%);
+            pointer-events: none;
+            z-index: 0;
+        }
+
+        .container {
+            max-width: 100vw;
+            min-height: 100vh;
+            padding: 1rem;
+            position: relative;
+            z-index: 1;
+        }
+
+        h1 {
+            font-family: 'Orbitron', sans-serif;
+            font-size: clamp(1.5rem, 4vw, 2rem);
+            text-align: center;
+            margin-bottom: 0.3rem;
+            background: linear-gradient(135deg, var(--gold) 0%, var(--blue) 100%);
+            -webkit-background-clip: text;
+            -webkit-text-fill-color: transparent;
+            background-clip: text;
+            text-transform: uppercase;
+            letter-spacing: 2px;
+        }
+
+        .subtitle {
+            text-align: center;
+            color: var(--blue);
+            font-size: clamp(0.8rem, 2vw, 1rem);
+            margin-bottom: 1rem;
+            letter-spacing: 1px;
+        }
+
+        .screen {
+            display: none;
+        }
+
+        .screen.active {
+            display: block;
+        }
+
+        .setup-card, .lobby-card {
+            background: rgba(26, 39, 68, 0.8);
+            border: 2px solid var(--gold);
+            border-radius: 15px;
+            padding: 1.5rem;
+            backdrop-filter: blur(10px);
+            box-shadow: 0 20px 60px rgba(0, 0, 0, 0.5);
+            max-width: 700px;
+            margin: 0 auto;
+            max-height: 85vh;
+            overflow-y: auto;
+        }
+
+        .input-group {
+            margin-bottom: 1rem;
+        }
+
+        label {
+            display: block;
+            margin-bottom: 0.4rem;
+            color: var(--gold);
+            font-weight: 700;
+            font-size: 0.9rem;
+        }
+
+        input, select {
+            width: 100%;
+            padding: 0.6rem;
+            background: rgba(10, 20, 40, 0.7);
+            border: 2px solid var(--blue);
+            border-radius: 8px;
+            color: white;
+            font-size: 0.9rem;
+        }
+
+        input:focus, select:focus {
+            outline: none;
+            border-color: var(--gold);
+        }
+
+        .btn {
+            padding: 0.8rem 2rem;
+            background: linear-gradient(135deg, var(--gold) 0%, #d4af37 100%);
+            border: none;
+            border-radius: 10px;
+            color: var(--dark-blue);
+            font-size: 1rem;
+            font-weight: 700;
+            cursor: pointer;
+            transition: all 0.3s;
+            text-transform: uppercase;
+            letter-spacing: 1px;
+            font-family: 'Orbitron', sans-serif;
+        }
+
+        .btn:hover {
+            transform: translateY(-2px);
+        }
+
+        .btn:disabled {
+            opacity: 0.5;
+            cursor: not-allowed;
+            transform: none;
+        }
+
+        .btn-secondary {
+            background: linear-gradient(135deg, var(--blue) 0%, var(--purple) 100%);
+            color: white;
+        }
+
+        .category-grid {
+            display: grid;
+            grid-template-columns: repeat(auto-fit, minmax(140px, 1fr));
+            gap: 0.8rem;
+            margin-top: 0.8rem;
+        }
+
+        .category-option {
+            padding: 0.8rem;
+            background: rgba(10, 20, 40, 0.7);
+            border: 2px solid var(--blue);
+            border-radius: 8px;
+            cursor: pointer;
+            transition: all 0.3s;
+            text-align: center;
+            font-size: 0.85rem;
+        }
+
+        .category-option:hover {
+            transform: translateY(-2px);
+            border-color: var(--gold);
+        }
+
+        .category-option.selected {
+            background: linear-gradient(135deg, var(--gold) 0%, #d4af37 100%);
+            border-color: var(--gold);
+            color: var(--dark-blue);
+        }
+
+        .quiz-layout {
+            display: grid;
+            grid-template-columns: 1fr 280px;
+            gap: 1rem;
+            height: calc(100vh - 100px);
+            max-height: calc(100vh - 100px);
+        }
+
+        .quiz-main {
+            display: flex;
+            flex-direction: column;
+            gap: 0.8rem;
+            min-height: 0;
+        }
+
+        .quiz-header {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            background: rgba(26, 39, 68, 0.8);
+            border: 2px solid var(--gold);
+            border-radius: 10px;
+            padding: 0.8rem 1rem;
+            flex-shrink: 0;
+        }
+
+        .round-info {
+            font-family: 'Orbitron', sans-serif;
+            font-size: 1.1rem;
+            color: var(--gold);
+        }
+
+        .timer {
+            font-family: 'Orbitron', sans-serif;
+            font-size: 1.5rem;
+            color: var(--blue);
+            min-width: 60px;
+            text-align: center;
+        }
+
+        .timer.warning {
+            color: var(--red);
+            animation: pulse 0.5s ease-in-out infinite;
+        }
+
+        @keyframes pulse {
+            0%, 100% { transform: scale(1); }
+            50% { transform: scale(1.1); }
+        }
+
+        .question-section {
+            flex: 1;
+            background: rgba(26, 39, 68, 0.9);
+            border: 2px solid var(--purple);
+            border-radius: 15px;
+            padding: 1.5rem;
+            display: flex;
+            flex-direction: column;
+            gap: 1rem;
+            overflow-y: auto;
+            min-height: 0;
+        }
+
+        .question-image {
+            max-width: 100%;
+            max-height: 400px;
+            object-fit: cover;
+            border: 3px solid var(--gold);
+            border-radius: 10px;
+            margin: 0 auto;
+            display: block;
+        }
+
+        .question-text {
+            font-size: clamp(1.2rem, 3vw, 1.5rem);
+            font-weight: 700;
+            text-align: center;
+            line-height: 1.5;
+        }
+
+        .buzzer-section {
+            text-align: center;
+        }
+
+        .buzzer-btn {
+            padding: 1.5rem 3rem;
+            background: linear-gradient(135deg, var(--orange) 0%, var(--red) 100%);
+            border: 3px solid var(--gold);
+            border-radius: 15px;
+            color: white;
+            font-size: 1.5rem;
+            font-weight: 700;
+            cursor: pointer;
+            font-family: 'Orbitron', sans-serif;
+            transition: all 0.3s;
+            text-transform: uppercase;
+        }
+
+        .buzzer-btn:hover {
+            transform: scale(1.05);
+        }
+
+        .buzzer-btn:disabled {
+            opacity: 0.3;
+            cursor: not-allowed;
+            transform: scale(1);
+        }
+
+        .answer-section {
+            display: flex;
+            flex-direction: column;
+            gap: 1rem;
+        }
+
+        .answer-input-area {
+            background: rgba(10, 20, 40, 0.5);
+            border: 2px solid var(--gold);
+            border-radius: 10px;
+            padding: 1.5rem;
+            min-height: 80px;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            font-size: 1.8rem;
+            font-weight: 700;
+            color: var(--gold);
+            text-align: center;
+            word-break: break-all;
+        }
+
+        .choice-grid {
+            display: grid;
+            grid-template-columns: repeat(2, 1fr);
+            gap: 0.8rem;
+        }
+
+        .choice-btn {
+            padding: 1.2rem;
+            background: linear-gradient(135deg, var(--blue) 0%, var(--purple) 100%);
+            border: 3px solid transparent;
+            border-radius: 10px;
+            color: white;
+            font-size: 1.3rem;
+            font-weight: 700;
+            cursor: pointer;
+            transition: all 0.3s;
+        }
+
+        .choice-btn:hover:not(:disabled) {
+            transform: scale(1.05);
+            border-color: var(--gold);
+        }
+
+        .choice-btn:disabled {
+            opacity: 0.3;
+            cursor: not-allowed;
+            transform: scale(1);
+        }
+
+        .sidebar {
+            display: flex;
+            flex-direction: column;
+            gap: 0.8rem;
+            overflow-y: auto;
+            min-height: 0;
+        }
+
+        .scoreboard {
+            background: rgba(26, 39, 68, 0.9);
+            border: 2px solid var(--gold);
+            border-radius: 10px;
+            padding: 1rem;
+            flex-shrink: 0;
+        }
+
+        .scoreboard h3 {
+            font-family: 'Orbitron', sans-serif;
+            color: var(--gold);
+            margin-bottom: 0.8rem;
+            text-align: center;
+            font-size: 1.1rem;
+        }
+
+        .score-item {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            padding: 0.6rem;
+            margin-bottom: 0.4rem;
+            background: rgba(255, 255, 255, 0.05);
+            border-radius: 8px;
+            border-left: 3px solid var(--blue);
+        }
+
+        .score-item.first {
+            border-left-color: var(--gold);
+            background: rgba(200, 155, 60, 0.1);
+        }
+
+        .score-name {
+            font-weight: 700;
+            font-size: 0.9rem;
+        }
+
+        .score-points {
+            color: var(--gold);
+            font-family: 'Orbitron', sans-serif;
+            font-size: 1rem;
+            font-weight: 700;
+        }
+
+        .progress-box {
+            background: rgba(26, 39, 68, 0.9);
+            border: 2px solid var(--purple);
+            border-radius: 10px;
+            padding: 1rem;
+            flex-shrink: 0;
+        }
+
+        .progress-box h3 {
+            font-family: 'Orbitron', sans-serif;
+            color: var(--purple);
+            margin-bottom: 0.8rem;
+            text-align: center;
+            font-size: 1rem;
+        }
+
+        .progress-item {
+            display: flex;
+            align-items: center;
+            justify-content: space-between;
+            padding: 0.5rem;
+            margin-bottom: 0.4rem;
+            background: rgba(255, 255, 255, 0.05);
+            border-radius: 6px;
+            font-size: 0.85rem;
+        }
+
+        .progress-item.answered {
+            border-left: 3px solid var(--green);
+        }
+
+        .progress-item.wrong {
+            border-left: 3px solid var(--red);
+        }
+
+        .progress-name {
+            font-weight: 700;
+        }
+
+        .progress-badge {
+            padding: 0.2rem 0.5rem;
+            border-radius: 8px;
+            font-size: 0.75rem;
+            font-weight: 700;
+        }
+
+        .progress-badge.correct {
+            background: var(--green);
+            color: white;
+        }
+
+        .progress-badge.incorrect {
+            background: var(--red);
+            color: white;
+        }
+
+        .progress-badge.first {
+            background: var(--gold);
+            color: var(--dark-blue);
+        }
+
+        .mistakes-info {
+            background: rgba(239, 68, 68, 0.2);
+            border: 1px solid var(--red);
+            border-radius: 6px;
+            padding: 0.4rem;
+            text-align: center;
+            margin-top: 0.3rem;
+            font-size: 0.75rem;
+        }
+
+        .connection-status {
+            position: fixed;
+            top: 0.5rem;
+            right: 0.5rem;
+            background: rgba(0, 0, 0, 0.8);
+            padding: 0.4rem 0.8rem;
+            border-radius: 15px;
+            display: flex;
+            align-items: center;
+            gap: 0.4rem;
+            z-index: 100;
+            font-size: 0.8rem;
+        }
+
+        .status-dot {
+            width: 8px;
+            height: 8px;
+            border-radius: 50%;
+            background: var(--green);
+        }
+
+        .status-dot.disconnected {
+            background: var(--red);
+        }
+
+        .results-card {
+            background: rgba(26, 39, 68, 0.9);
+            border: 3px solid var(--gold);
+            border-radius: 15px;
+            padding: 2rem;
+            text-align: center;
+            max-width: 600px;
+            margin: 0 auto;
+        }
+
+        .trophy {
+            font-size: 4rem;
+            margin-bottom: 0.8rem;
+        }
+
+        .winner-name {
+            font-family: 'Orbitron', sans-serif;
+            font-size: 2rem;
+            color: var(--gold);
+            margin-bottom: 1rem;
+        }
+
+        .results-actions {
+            display: flex;
+            gap: 1rem;
+            justify-content: center;
+            margin-top: 1.5rem;
+        }
+    </style>
+</head>
+<body>
+    <div class="connection-status">
+        <div class="status-dot" id="statusDot"></div>
+        <span id="statusText">接続中</span>
+    </div>
+
+    <div class="container">
+        <h1>LoL早押しクイズ</h1>
+        <p class="subtitle">League of Legends - オンライン対戦</p>
+
+        <div id="homeScreen" class="screen active">
+            <div class="setup-card">
+                <div class="input-group">
+                    <label>プレイヤー名</label>
+                    <input type="text" id="playerName" placeholder="あなたの名前を入力" maxlength="20">
+                </div>
+                <div style="display: grid; grid-template-columns: 1fr 1fr; gap: 0.8rem;">
+                    <button class="btn" id="createRoomBtn">ルームを作成</button>
+                    <button class="btn btn-secondary" id="joinRoomBtn">ルームに参加</button>
+                </div>
+            </div>
+        </div>
+
+        <div id="joinScreen" class="screen">
+            <div class="setup-card">
+                <div class="input-group">
+                    <label>ルームコード</label>
+                    <input type="text" id="roomCodeInput" placeholder="6桁のコードを入力" maxlength="6" style="text-transform: uppercase;">
+                </div>
+                <div style="display: grid; grid-template-columns: 1fr 1fr; gap: 0.8rem;">
+                    <button class="btn btn-secondary" id="backToHomeBtn">戻る</button>
+                    <button class="btn" id="joinBtn">参加</button>
+                </div>
+            </div>
+        </div>
+
+        <div id="lobbyScreen" class="screen">
+            <div class="lobby-card">
+                <div style="background: rgba(10, 20, 40, 0.9); border: 2px solid var(--gold); border-radius: 10px; padding: 1rem; text-align: center; margin-bottom: 1rem;">
+                    <div style="color: var(--blue); font-size: 0.9rem; margin-bottom: 0.3rem;">ルームコード</div>
+                    <div style="font-family: 'Orbitron', sans-serif; font-size: 2rem; color: var(--gold); letter-spacing: 6px; margin: 0.3rem 0;" id="roomCode">------</div>
+                    <button id="copyCodeBtn" style="padding: 0.5rem 1.2rem; background: var(--blue); border: none; border-radius: 8px; color: white; font-weight: 700; cursor: pointer; font-size: 0.85rem;">📋 コピー</button>
+                </div>
+
+                <div class="input-group" id="hostSettings">
+                    <label>出題範囲設定（複数選択可）</label>
+                    <div class="category-grid" id="categoryGrid">
+                        <div class="category-option selected" data-category="champion">🎭 チャンピオン名</div>
+                        <div class="category-option" data-category="skill">⚔️ スキル効果</div>
+                        <div class="category-option" data-category="lore">📖 ストーリー</div>
+                        <div class="category-option" data-category="combo">🎯 コンボ</div>
+                        <div class="category-option" data-category="cooldown">⏱️ クールダウン</div>
+                        <div class="category-option" data-category="proplay">🏆 プロシーン</div>
+                    </div>
+                </div>
+
+                <div style="display: grid; grid-template-columns: 1fr 1fr; gap: 0.8rem;" id="hostSettings2">
+                    <div class="input-group">
+                        <label>勝利条件</label>
+                        <select id="winPoints">
+                            <option value="5">先に5ポイント</option>
+                            <option value="10" selected>先に10ポイント</option>
+                            <option value="15">先に15ポイント</option>
+                            <option value="20">先に20ポイント</option>
+                            <option value="30">先に30ポイント</option>
+                        </select>
+                    </div>
+                    <div class="input-group">
+                        <label>お手付き許容</label>
+                        <select id="mistakesAllowed">
+                            <option value="1">1回まで</option>
+                            <option value="2" selected>2回まで</option>
+                            <option value="3">3回まで</option>
+                            <option value="5">5回まで</option>
+                            <option value="999">無制限</option>
+                        </select>
+                    </div>
+                </div>
+
+                <div class="input-group">
+                    <label>参加プレイヤー</label>
+                    <div style="background: rgba(10, 20, 40, 0.7); border-radius: 10px; padding: 1rem;" id="playersList"></div>
+                </div>
+
+                <button class="btn" id="startGameBtn" style="display: block; margin: 1rem auto 0; width: 100%;">ゲーム開始</button>
+            </div>
+        </div>
+
+        <div id="quizScreen" class="screen">
+            <div class="quiz-layout">
+                <div class="quiz-main">
+                    <div class="quiz-header">
+                        <div class="round-info">
+                            問題 <span id="currentRound">1</span>
+                        </div>
+                        <div class="timer" id="timer">30</div>
+                    </div>
+
+                    <div class="question-section">
+                        <img id="questionImage" class="question-image" style="display: none;">
+                        <div class="question-text" id="questionText"></div>
+                        
+                        <div id="buzzerSection" class="buzzer-section">
+                            <button class="buzzer-btn" id="buzzerBtn">回答する</button>
+                        </div>
+
+                        <div id="answerSection" class="answer-section" style="display: none;">
+                            <div class="answer-input-area" id="answerDisplay"></div>
+                            <div class="choice-grid" id="choiceGrid"></div>
+                        </div>
+                    </div>
+                </div>
+
+                <div class="sidebar">
+                    <div class="scoreboard">
+                        <h3>スコアボード</h3>
+                        <div id="scoreList"></div>
+                    </div>
+
+                    <div class="progress-box">
+                        <h3>回答状況</h3>
+                        <div id="answerProgress"></div>
+                    </div>
+                </div>
+            </div>
+        </div>
+
+        <div id="resultsScreen" class="screen">
+            <div class="results-card">
+                <div class="trophy">🏆</div>
+                <div class="winner-name" id="winnerName"></div>
+                <div id="finalScores" style="margin: 1.5rem 0;"></div>
+                <div class="results-actions">
+                    <button class="btn btn-secondary" id="continueBtn">続ける</button>
+                    <button class="btn" id="endBtn">終了</button>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <script>
+(function() {
+    'use strict';
+
+    const AudioContext = window.AudioContext || window.webkitAudioContext;
+    const audioCtx = new AudioContext();
+
+    function playSound(freq, dur, type) {
+        if (audioCtx.state === 'suspended') audioCtx.resume();
+        const osc = audioCtx.createOscillator();
+        const gain = audioCtx.createGain();
+        osc.connect(gain);
+        gain.connect(audioCtx.destination);
+        osc.frequency.value = freq;
+        osc.type = type || 'sine';
+        gain.gain.setValueAtTime(0.3, audioCtx.currentTime);
+        gain.gain.exponentialRampToValueAtTime(0.01, audioCtx.currentTime + dur);
+        osc.start(audioCtx.currentTime);
+        osc.stop(audioCtx.currentTime + dur);
+    }
+
+    function playCorrect() {
+        playSound(523.25, 0.15);
+        setTimeout(function() { playSound(659.25, 0.15); }, 150);
+        setTimeout(function() { playSound(783.99, 0.3); }, 300);
+    }
+
+    function playWrong() {
+        playSound(200, 0.5, 'square');
+    }
+
+    function playClick() {
+        playSound(600, 0.1);
+    }
+
+    const championData = [
+        {id: "Aatrox", jp: "えいとろっくす"}, {id: "Ahri", jp: "あーり"}, {id: "Akali", jp: "あかり"},
+        {id: "Akshan", jp: "あくしゃん"}, {id: "Alistar", jp: "ありすたー"}, {id: "Amumu", jp: "あむむ"},
+        {id: "Anivia", jp: "あにう゛ぃあ"}, {id: "Annie", jp: "あにー"}, {id: "Aphelios", jp: "あふぇりおす"},
+        {id: "Ashe", jp: "あっしゅ"}, {id: "AurelionSol", jp: "おれりおんそる"}, {id: "Azir", jp: "あじーる"},
+        {id: "Bard", jp: "ばーど"}, {id: "Belveth", jp: "べるう゛ぇす"}, {id: "Blitzcrank", jp: "ぶりっつくらんく"},
+        {id: "Brand", jp: "ぶらんど"}, {id: "Braum", jp: "ぶらうむ"}, {id: "Caitlyn", jp: "けいとりん"},
+        {id: "Camille", jp: "かみーる"}, {id: "Cassiopeia", jp: "かしおぺあ"}, {id: "Chogath", jp: "ちょがす"},
+        {id: "Corki", jp: "こーき"}, {id: "Darius", jp: "だりうす"}, {id: "Diana", jp: "だいあな"},
+        {id: "Draven", jp: "どれいう゛ん"}, {id: "DrMundo", jp: "どくたーむんど"}, {id: "Ekko", jp: "えこー"},
+        {id: "Elise", jp: "えりす"}, {id: "Evelynn", jp: "いう゛りん"}, {id: "Ezreal", jp: "えずりある"},
+        {id: "Fiddlesticks", jp: "ふぃどるすてぃっくす"}, {id: "Fiora", jp: "ふぃおら"}, {id: "Fizz", jp: "ふぃず"},
+        {id: "Galio", jp: "がりお"}, {id: "Gangplank", jp: "がんぷらんく"}, {id: "Garen", jp: "がれん"},
+        {id: "Gnar", jp: "なー"}, {id: "Gragas", jp: "ぐらがす"}, {id: "Graves", jp: "ぐれいう゛す"},
+        {id: "Gwen", jp: "ぐうぇん"}, {id: "Hecarim", jp: "へかりむ"}, {id: "Heimerdinger", jp: "はいまーでぃんがー"},
+        {id: "Illaoi", jp: "いらおい"}, {id: "Irelia", jp: "いれりあ"}, {id: "Ivern", jp: "あいう゛ぁーん"},
+        {id: "Janna", jp: "じゃんな"}, {id: "JarvanIV", jp: "じゃーう゛ぁんふぉー"}, {id: "Jax", jp: "じゃっくす"},
+        {id: "Jayce", jp: "じぇいす"}, {id: "Jhin", jp: "じん"}, {id: "Jinx", jp: "じんくす"},
+        {id: "Kaisa", jp: "かいさ"}, {id: "Kalista", jp: "かりすた"}, {id: "Karma", jp: "かるま"},
+        {id: "Karthus", jp: "かーさす"}, {id: "Kassadin", jp: "かさでぃん"}, {id: "Katarina", jp: "かたりな"},
+        {id: "Kayle", jp: "けいる"}, {id: "Kayn", jp: "けいん"}, {id: "Kennen", jp: "けねん"},
+        {id: "Khazix", jp: "かじっくす"}, {id: "Kindred", jp: "きんどれっど"}, {id: "Kled", jp: "くれっど"},
+        {id: "KogMaw", jp: "こぐまう"}, {id: "KSante", jp: "けさんて"}, {id: "Leblanc", jp: "るぶらん"},
+        {id: "LeeSin", jp: "りーしん"}, {id: "Leona", jp: "れおな"}, {id: "Lillia", jp: "りりあ"},
+        {id: "Lissandra", jp: "りさんどら"}, {id: "Lucian", jp: "るしあん"}, {id: "Lulu", jp: "るる"},
+        {id: "Lux", jp: "るくす"}, {id: "Malphite", jp: "まるふぁいと"}, {id: "Malzahar", jp: "まるざはーる"},
+        {id: "Maokai", jp: "まおかい"}, {id: "MasterYi", jp: "ますたーいー"}, {id: "Milio", jp: "みりお"},
+        {id: "MissFortune", jp: "みすふぉーちゅん"}, {id: "Mordekaiser", jp: "もるでかいざー"}, {id: "Morgana", jp: "もるがな"},
+        {id: "Naafiri", jp: "なーふぃり"}, {id: "Nami", jp: "なみ"}, {id: "Nasus", jp: "なさす"},
+        {id: "Nautilus", jp: "のーちらす"}, {id: "Neeko", jp: "にーこ"}, {id: "Nidalee", jp: "にだりー"},
+        {id: "Nilah", jp: "にーら"}, {id: "Nocturne", jp: "のくたーん"}, {id: "Nunu", jp: "ぬぬ"},
+        {id: "Olaf", jp: "おらふ"}, {id: "Orianna", jp: "おりあな"}, {id: "Ornn", jp: "おーん"},
+        {id: "Pantheon", jp: "ぱんておん"}, {id: "Poppy", jp: "ぽっぴー"}, {id: "Pyke", jp: "ぱいく"},
+        {id: "Qiyana", jp: "きあな"}, {id: "Quinn", jp: "くいん"}, {id: "Rakan", jp: "らかん"},
+        {id: "Rammus", jp: "らむす"}, {id: "RekSai", jp: "れくさい"}, {id: "Rell", jp: "れる"},
+        {id: "Renata", jp: "れなーた"}, {id: "Renekton", jp: "れねくとん"}, {id: "Rengar", jp: "れんがー"},
+        {id: "Riven", jp: "りう゛ぇん"}, {id: "Rumble", jp: "らんぶる"}, {id: "Ryze", jp: "らいず"},
+        {id: "Samira", jp: "さみーら"}, {id: "Sejuani", jp: "せじゅあに"}, {id: "Senna", jp: "せな"},
+        {id: "Seraphine", jp: "せらふぃーん"}, {id: "Sett", jp: "せっと"}, {id: "Shaco", jp: "しゃこ"},
+        {id: "Shen", jp: "しぇん"}, {id: "Shyvana", jp: "しう゛ぁな"}, {id: "Singed", jp: "しんじど"},
+        {id: "Sion", jp: "さいおん"}, {id: "Sivir", jp: "しう゛ぃあ"}, {id: "Skarner", jp: "すかーなー"},
+        {id: "Sona", jp: "そな"}, {id: "Soraka", jp: "そらか"}, {id: "Swain", jp: "すうぇいん"},
+        {id: "Sylas", jp: "さいらす"}, {id: "Syndra", jp: "しんどら"}, {id: "TahmKench", jp: "たむけんち"},
+        {id: "Taliyah", jp: "たりや"}, {id: "Talon", jp: "たろん"}, {id: "Taric", jp: "たりっく"},
+        {id: "Teemo", jp: "てぃーも"}, {id: "Thresh", jp: "すれっしゅ"}, {id: "Tristana", jp: "とりすたな"},
+        {id: "Trundle", jp: "とらんどる"}, {id: "Tryndamere", jp: "とりんだめあ"}, {id: "TwistedFate", jp: "ついすてっどふぇいと"},
+        {id: "Twitch", jp: "とぅいっち"}, {id: "Udyr", jp: "うでぃあ"}, {id: "Urgot", jp: "あーごっと"},
+        {id: "Varus", jp: "う゛ぁるす"}, {id: "Vayne", jp: "う゛ぇいん"}, {id: "Veigar", jp: "う゛ぇいがー"},
+        {id: "Velkoz", jp: "う゛ぇるこず"}, {id: "Vex", jp: "う゛ぇっくす"}, {id: "Vi", jp: "う゛ぁい"},
+        {id: "Viego", jp: "う゛ぃえご"}, {id: "Viktor", jp: "う゛ぃくたー"}, {id: "Vladimir", jp: "う゛らでぃみーる"},
+        {id: "Volibear", jp: "う゛ぉりべあ"}, {id: "Warwick", jp: "わーうぃっく"}, {id: "Wukong", jp: "うーこん"},
+        {id: "Xayah", jp: "ざや"}, {id: "Xerath", jp: "ぜらす"}, {id: "XinZhao", jp: "しんじゃお"},
+        {id: "Yasuo", jp: "やすお"}, {id: "Yone", jp: "よね"}, {id: "Yorick", jp: "よりっく"},
+        {id: "Yuumi", jp: "ゆーみ"}, {id: "Zac", jp: "ざっく"}, {id: "Zed", jp: "ぜど"},
+        {id: "Zeri", jp: "ぜり"}, {id: "Ziggs", jp: "じぐす"}, {id: "Zilean", jp: "じりあん"},
+        {id: "Zoe", jp: "ぞーい"}, {id: "Zyra", jp: "ざいら"}
+    ];
+
+    const questionDB = {
+        champion: [],
+        skill: [
+            {q: "ヤスオのQスキルの効果は", a: "のっくあっぷ", choices: ["のっくあっぷ", "すたん", "すねあ", "すろう"]},
+            {q: "レオナのQスキルの効果は", a: "すたん", choices: ["すたん", "のっくあっぷ", "すねあ", "さいれんす"]},
+            {q: "モルガナのQスキルの効果は", a: "すねあ", choices: ["すねあ", "すたん", "すろう", "のっくあっぷ"]},
+            {q: "アッシュのRスキルの効果は", a: "すたん", choices: ["すたん", "すねあ", "すろう", "さいれんす"]},
+            {q: "マルファイトのRスキルの効果は", a: "のっくあっぷ", choices: ["のっくあっぷ", "すたん", "すねあ", "すろう"]},
+            {q: "ジャンナのQスキルの効果は", a: "のっくあっぷ", choices: ["のっくあっぷ", "すたん", "すねあ", "さいれんす"]},
+            {q: "ソラカのEスキルの効果は", a: "さいれんす", choices: ["さいれんす", "すたん", "すねあ", "すろう"]},
+            {q: "ブリッツのQスキルの効果は", a: "ひっぱる", choices: ["ひっぱる", "のっくあっぷ", "すたん", "すねあ"]},
+            {q: "スレッシュのQスキルの効果は", a: "ひっぱる", choices: ["ひっぱる", "すたん", "すねあ", "すろう"]},
+            {q: "ナウティラスのQスキルの効果は", a: "ひっぱる", choices: ["ひっぱる", "のっくあっぷ", "すたん", "すねあ"]},
+            {q: "シンドラのEスキルの効果は", a: "のっくばっく", choices: ["のっくばっく", "のっくあっぷ", "すたん", "すねあ"]},
+            {q: "ドレイヴンのEスキルの効果は", a: "のっくばっく", choices: ["のっくばっく", "のっくあっぷ", "すたん", "すろう"]},
+            {q: "ヴェインのEスキルの効果は", a: "のっくばっく", choices: ["のっくばっく", "すたん", "すねあ", "すろう"]},
+            {q: "アジールのRスキルの効果は", a: "のっくばっく", choices: ["のっくばっく", "のっくあっぷ", "すたん", "すねあ"]},
+            {q: "リーシンのRスキルの効果は", a: "のっくばっく", choices: ["のっくばっく", "のっくあっぷ", "すたん", "すろー"]},
+            {q: "ジンクスのEスキルの効果は", a: "すねあ", choices: ["すねあ", "すたん", "すろう", "さいれんす"]},
+            {q: "ケイトリンのWスキルの効果は", a: "すねあ", choices: ["すねあ", "すたん", "すろう", "のっくあっぷ"]},
+            {q: "ナミのQスキルの効果は", a: "のっくあっぷ", choices: ["のっくあっぷ", "すたん", "すねあ", "すろう"]},
+            {q: "ヤスオのRスキルの必要条件は", a: "のっくあっぷ", choices: ["のっくあっぷ", "すたん", "すねあ", "すろう"]},
+            {q: "アリスターのQスキルの効果は", a: "のっくあっぷ", choices: ["のっくあっぷ", "すたん", "すねあ", "すろう"]},
+            {q: "カシオペアのWスキルの効果は", a: "ぐらうんど", choices: ["ぐらうんど", "すたん", "すねあ", "すろう"]},
+            {q: "ポッピーのWスキルの効果は", a: "だっしゅぶろっく", choices: ["だっしゅぶろっく", "のっくあっぷ", "すたん", "すねあ"]},
+            {q: "ヴェックスのパッシブの効果は", a: "だっしゅを妨害", choices: ["だっしゅを妨害", "すたん", "すねあ", "すろう"]},
+            {q: "カルマのWスキルの効果は", a: "すねあ", choices: ["すねあ", "すたん", "すろう", "さいれんす"]},
+            {q: "ルクスのQスキルの効果は", a: "すねあ", choices: ["すねあ", "すたん", "のっくあっぷ", "すろう"]},
+            {q: "モルデカイザーのEスキルの効果は", a: "ひっぱる", choices: ["ひっぱる", "のっくあっぷ", "すたん", "すねあ"]},
+            {q: "スウェインのパッシブの効果は", a: "ひっぱる", choices: ["ひっぱる", "のっくあっぷ", "すたん", "すねあ"]},
+            {q: "アーゴットのRスキルの効果は", a: "ひっぱる", choices: ["ひっぱる", "のっくばっく", "すたん", "すねあ"]},
+            {q: "ベルヴェスのQスキルの効果は", a: "のっくあっぷ", choices: ["のっくあっぷ", "すたん", "すねあ", "すろう"]},
+            {q: "グラガスのRスキルの効果は", a: "のっくばっく", choices: ["のっくばっく", "のっくあっぷ", "すたん", "すねあ"]},
+            {q: "ジェイスのEスキルの効果は", a: "のっくばっく", choices: ["のっくばっく", "のっくあっぷ", "すたん", "すろう"]},
+            {q: "タロンのEスキルの効果は", a: "かべこえ", choices: ["かべこえ", "だっしゅ", "てれぽーと", "じゃんぷ"]},
+            {q: "ケインのEスキルの効果は", a: "かべとおり", choices: ["かべとおり", "かべこえ", "だっしゅ", "てれぽーと"]},
+            {q: "バードのEスキルの効果は", a: "かべぽーたる", choices: ["かべぽーたる", "かべこえ", "てれぽーと", "だっしゅ"]},
+            {q: "リサンドラのWスキルの効果は", a: "すねあ", choices: ["すねあ", "すたん", "すろう", "さいれんす"]},
+            {q: "アニビアのQスキルの効果は", a: "すたん", choices: ["すたん", "すねあ", "すろう", "のっくあっぷ"]},
+            {q: "ブランドのQスキルの効果は", a: "すたん", choices: ["すたん", "すねあ", "すろう", "さいれんす"]},
+            {q: "ソナのRスキルの効果は", a: "すたん", choices: ["すたん", "すねあ", "さいれんす", "すろう"]},
+            {q: "カーサスのWスキルの効果は", a: "すろう", choices: ["すろう", "すたん", "すねあ", "さいれんす"]},
+            {q: "チョガスのQスキルの効果は", a: "のっくあっぷ", choices: ["のっくあっぷ", "すたん", "すねあ", "すろう"]},
+            {q: "ランブルのEスキルの効果は", a: "すろう", choices: ["すろう", "すたん", "すねあ", "さいれんす"]}
+        ],
+        lore: [
+            {q: "アーケインでジンクスの本名は", a: "ぱうだー", choices: ["ぱうだー", "ばいおれっと", "くらぎっど", "えこー"]},
+            {q: "アーケインでヴァイの本名は", a: "ばいおれっと", choices: ["ばいおれっと", "ぱうだー", "くらぎっど", "じんくす"]},
+            {q: "アーケインでジンクスとヴァイの関係は", a: "しまい", choices: ["しまい", "ともだち", "てき", "みちのひと"]},
+            {q: "アーケインの舞台となる都市は", a: "ぴるとおーう゛ぁー", choices: ["ぴるとおーう゛ぁー", "でまーしあ", "のくさす", "あいおにあ"]},
+            {q: "ヤスオの故郷の地域は", a: "あいおにあ", choices: ["あいおにあ", "でまーしあ", "のくさす", "ふれるよるど"]},
+            {q: "ガレンとルクスの出身地は", a: "でまーしあ", choices: ["でまーしあ", "のくさす", "あいおにあ", "ぴるとおーう゛ぁー"]},
+            {q: "ダリウスとドレイヴンの関係は", a: "きょうだい", choices: ["きょうだい", "ともだち", "てき", "みちのひと"]},
+            {q: "アーリの種族は", a: "きつね", choices: ["きつね", "おおかみ", "りゅう", "にんげん"]},
+            {q: "ナサスとレネクトンの種族は", a: "しゅうりま", choices: ["しゅうりま", "でまーしあ", "あいおにあ", "よーどる"]},
+            {q: "ティーモの種族は", a: "よーどる", choices: ["よーどる", "にんげん", "えるふ", "どわーふ"]},
+            {q: "ジンクスとヴァイが育った場所は", a: "ぞーん", choices: ["ぞーん", "ぴるとおーう゛ぁー", "でまーしあ", "のくさす"]},
+            {q: "アーケインでジンクスを育てた人物は", a: "しるこ", choices: ["しるこ", "う゛ぁんだー", "じぇいす", "う゛ぃくたー"]},
+            {q: "アーケインでエコーの武器は", a: "じかんそうち", choices: ["じかんそうち", "けん", "じゅう", "おの"]},
+            {q: "アーケインでジェイスが作った道具は", a: "へくすてっくげーと", choices: ["へくすてっくげーと", "じかんそうち", "ろぼっと", "ひこうき"]},
+            {q: "ゼドとシェンの関係は", a: "きょうだいでし", choices: ["きょうだいでし", "ともだち", "てき", "みちのひと"]},
+            {q: "ヤスオとヨネの関係は", a: "きょうだい", choices: ["きょうだい", "ともだち", "てき", "みちのひと"]},
+            {q: "ガレンとカタリナの関係は", a: "てきどうしのこい", choices: ["てきどうしのこい", "きょうだい", "ともだち", "てき"]},
+            {q: "ラカンとザヤの関係は", a: "こいびと", choices: ["こいびと", "きょうだい", "ともだち", "てき"]},
+            {q: "アッシュとトリンダメアの関係は", a: "ふうふ", choices: ["ふうふ", "きょうだい", "ともだち", "てき"]},
+            {q: "ルシアンとセナの関係は", a: "ふうふ", choices: ["ふうふ", "きょうだい", "ともだち", "てき"]}
+        ],
+        combo: [
+            {q: "ヤスオの基本コンボは", a: "E→Q→R", choices: ["E→Q→R", "Q→E→R", "R→E→Q", "Q→R→E"]},
+            {q: "ゼドのワンコンボは", a: "W→E→Q→R", choices: ["W→E→Q→R", "R→W→Q→E", "Q→W→E→R", "E→W→R→Q"]},
+            {q: "リーシンのインセックは", a: "Q→Q→R→F", choices: ["Q→Q→R→F", "R→Q→F", "F→R→Q", "W→R→Q"]},
+            {q: "アーリのバーストコンボは", a: "E→W→Q→R", choices: ["E→W→Q→R", "Q→E→W→R", "R→E→Q→W", "W→E→R→Q"]},
+            {q: "アニーのスタンコンボは", a: "R→W→Q", choices: ["R→W→Q", "Q→W→R", "W→Q→R", "Q→R→W"]},
+            {q: "シンドラのワンコンボは", a: "Q→E→R", choices: ["Q→E→R", "E→Q→R", "R→Q→E", "Q→R→E"]},
+            {q: "レオナのフルコンボは", a: "E→Q→R", choices: ["E→Q→R", "Q→E→R", "R→E→Q", "Q→R→E"]},
+            {q: "マルファイトのエンゲージは", a: "R→E→Q", choices: ["R→E→Q", "E→R→Q", "Q→R→E", "R→Q→E"]},
+            {q: "カタリナのリセットコンボは", a: "E→W→Q→R", choices: ["E→W→Q→R", "Q→W→E→R", "R→E→Q→W", "W→E→R→Q"]},
+            {q: "フィズのバーストコンボは", a: "Q→W→E→R", choices: ["Q→W→E→R", "R→Q→W→E", "E→Q→W→R", "W→Q→R→E"]},
+            {q: "アカリのコンボは", a: "Q→E→R→AA", choices: ["Q→E→R→AA", "E→Q→R→AA", "R→E→Q→AA", "Q→R→E→AA"]},
+            {q: "ダイアナのコンボは", a: "Q→R→W→E", choices: ["Q→R→W→E", "R→Q→W→E", "W→Q→R→E", "Q→W→R→E"]},
+            {q: "エコーのコンボは", a: "E→Q→AA→R", choices: ["E→Q→AA→R", "Q→E→AA→R", "R→E→Q→AA", "Q→AA→E→R"]},
+            {q: "カサディンのコンボは", a: "R→E→Q→W", choices: ["R→E→Q→W", "E→R→Q→W", "Q→R→E→W", "R→Q→E→W"]},
+            {q: "ブラッドミアのコンボは", a: "E→Q→R→W", choices: ["E→Q→R→W", "Q→E→R→W", "R→E→Q→W", "Q→R→E→W"]}
+        ],
+        cooldown: [
+            {q: "フラッシュのクールダウンは", a: "5ふん", choices: ["5ふん", "3ふん", "7ふん", "4ふん"]},
+            {q: "イグナイトのクールダウンは", a: "3ふん", choices: ["3ふん", "5ふん", "2ふん", "4ふん"]},
+            {q: "テレポート序盤のクールダウンは", a: "6ふん", choices: ["6ふん", "5ふん", "7ふん", "4ふん"]},
+            {q: "ヒールのクールダウンは", a: "4ふん", choices: ["4ふん", "3ふん", "5ふん", "2ふん"]},
+            {q: "バリアのクールダウンは", a: "3ふん", choices: ["3ふん", "4ふん", "5ふん", "2ふん"]},
+            {q: "クレンズのクールダウンは", a: "3ふん30びょう", choices: ["3ふん30びょう", "3ふん", "4ふん", "2ふん30びょう"]},
+            {q: "ゴーストのクールダウンは", a: "3ふん30びょう", choices: ["3ふん30びょう", "3ふん", "4ふん", "5ふん"]},
+            {q: "イグゾーストのクールダウンは", a: "3ふん30びょう", choices: ["3ふん30びょう", "3ふん", "4ふん", "5ふん"]},
+            {q: "スマイトのクールダウンは", a: "90びょう", choices: ["90びょう", "60びょう", "120びょう", "75びょう"]},
+            {q: "マークのクールダウンは", a: "80びょう", choices: ["80びょう", "60びょう", "90びょう", "100びょう"]}
+        ],
+        proplay: [
+            {q: "2023年ワールドの優勝チームは", a: "T1", choices: ["T1", "JDG", "WBG", "GEN"]},
+            {q: "2022年ワールドの優勝チームは", a: "DRX", choices: ["DRX", "T1", "GEN", "JDG"]},
+            {q: "2021年ワールドの優勝チームは", a: "EDG", choices: ["EDG", "DK", "T1", "GEN"]},
+            {q: "2020年ワールドの優勝チームは", a: "DWG", choices: ["DWG", "SN", "G2", "TES"]},
+            {q: "2019年ワールドの優勝チームは", a: "FPX", choices: ["FPX", "G2", "SKT", "IG"]},
+            {q: "2018年ワールドの優勝チームは", a: "IG", choices: ["IG", "FNC", "G2", "RNG"]},
+            {q: "Season1ワールドの優勝チームは", a: "FNC", choices: ["FNC", "AAA", "TSM", "CLG"]},
+            {q: "最多ワールド優勝チームは", a: "T1", choices: ["T1", "GEN", "FNC", "EDG"]},
+            {q: "Fakerの本名は", a: "いさんひょく", choices: ["いさんひょく", "ぱくじうん", "きむじょんぎょん", "ちぇうじ"]},
+            {q: "LCKの前身リーグ名は", a: "OGN", choices: ["OGN", "LPL", "LCS", "LEC"]},
+            {q: "2023年MSIの優勝チームは", a: "JDG", choices: ["JDG", "T1", "GEN", "BLG"]},
+            {q: "2022年MSIの優勝チームは", a: "RNG", choices: ["RNG", "T1", "G2", "EG"]},
+            {q: "Fakerの初優勝の年は", a: "2013", choices: ["2013", "2012", "2014", "2011"]},
+            {q: "最年少ワールド優勝選手は", a: "ぴーなっつ", choices: ["ぴーなっつ", "ふぇいかー", "きゃにおん", "しょーめいかー"]},
+            {q: "T1の旧チーム名は", a: "SKT", choices: ["SKT", "KT", "SSG", "ROX"]}
+        ]
+    };
+
+    championData.forEach(function(champ) {
+        questionDB.champion.push({
+            q: "このチャンピオンは誰ですか",
+            a: champ.jp,
+            championId: champ.id
+        });
+    });
+
+    class StorageManager {
+        constructor() {
+            this.prefix = 'lol_quiz_perfect_';
+        }
+        get(key) {
+            try {
+                const data = localStorage.getItem(this.prefix + key);
+                return data ? JSON.parse(data) : null;
+            } catch (e) {
+                return null;
+            }
+        }
+        set(key, value) {
+            try {
+                localStorage.setItem(this.prefix + key, JSON.stringify(value));
+                return true;
+            } catch (e) {
+                return false;
+            }
+        }
+    }
+
+    const storage = new StorageManager();
+
+    let state = {
+        roomCode: null,
+        playerName: null,
+        isHost: false,
+        players: [],
+        categories: ['champion'],
+        winPoints: 10,
+        mistakesAllowed: 2,
+        currentRound: 1,
+        currentQuestion: null,
+        scores: {},
+        mistakes: {},
+        timer: null,
+        timeLeft: 30,
+        questions: [],
+        usedQuestions: [],
+        playerAnswers: {},
+        answeredPlayers: [],
+        currentAnswer: '',
+        currentChoices: [],
+        buzzed: false,
+        answeringPlayer: null,
+        hasAnswered: false
+    };
+
+    let pollInterval = null;
+
+    function generateRoomCode() {
+        const chars = 'ABCDEFGHIJKLMNOPQRSTUVWXYZ0123456789';
+        let code = '';
+        for (let i = 0; i < 6; i++) {
+            code += chars.charAt(Math.floor(Math.random() * chars.length));
+        }
+        return code;
+    }
+
+    function showScreen(screenId) {
+        document.querySelectorAll('.screen').forEach(function(s) {
+            s.classList.remove('active');
+        });
+        document.getElementById(screenId).classList.add('active');
+    }
+
+    function updateConnectionStatus(connected) {
+        const dot = document.getElementById('statusDot');
+        const text = document.getElementById('statusText');
+        if (connected) {
+            dot.classList.remove('disconnected');
+            text.textContent = 'オンライン';
+        } else {
+            dot.classList.add('disconnected');
+            text.textContent = '切断';
+        }
+    }
+
+    function createRoom() {
+        const playerName = document.getElementById('playerName').value.trim();
+        if (!playerName) {
+            alert('プレイヤー名を入力してください');
+            return;
+        }
+        if (audioCtx.state === 'suspended') audioCtx.resume();
+        const roomCode = generateRoomCode();
+        state.roomCode = roomCode;
+        state.playerName = playerName;
+        state.isHost = true;
+        state.players = [{name: playerName, isHost: true}];
+        state.scores[playerName] = 0;
+        state.mistakes[playerName] = 0;
+        storage.set('room_' + roomCode, {
+            host: playerName,
+            players: state.players,
+            categories: ['champion'],
+            winPoints: 10,
+            mistakesAllowed: 2,
+            gameStarted: false,
+            currentRound: 0,
+            currentQuestion: null,
+            scores: state.scores,
+            mistakes: state.mistakes,
+            usedQuestions: [],
+            playerAnswers: {},
+            answeredPlayers: [],
+            buzzed: false,
+            answeringPlayer: null
+        });
+        showLobby();
+        startPolling();
+    }
+
+    function showJoinRoom() {
+        showScreen('joinScreen');
+    }
+
+    function joinRoom() {
+        const playerName = document.getElementById('playerName').value.trim();
+        const roomCode = document.getElementById('roomCodeInput').value.trim().toUpperCase();
+        if (!playerName) {
+            alert('プレイヤー名を入力してください');
+            return;
+        }
+        if (!roomCode || roomCode.length !== 6) {
+            alert('6桁のルームコードを入力してください');
+            return;
+        }
+        if (audioCtx.state === 'suspended') audioCtx.resume();
+        const roomData = storage.get('room_' + roomCode);
+        if (!roomData) {
+            alert('ルームが見つかりません');
+            return;
+        }
+        const nameExists = roomData.players.some(function(p) {
+            return p.name === playerName;
+        });
+        if (nameExists) {
+            alert('この名前は既に使用されています');
+            return;
+        }
+        state.roomCode = roomCode;
+        state.playerName = playerName;
+        state.isHost = false;
+        roomData.players.push({name: playerName, isHost: false});
+        roomData.scores[playerName] = 0;
+        roomData.mistakes[playerName] = 0;
+        storage.set('room_' + roomCode, roomData);
+        showLobby();
+        startPolling();
+    }
+
+    function showHome() {
+        showScreen('homeScreen');
+    }
+
+    function showLobby() {
+        showScreen('lobbyScreen');
+        document.getElementById('roomCode').textContent = state.roomCode;
+        if (state.isHost) {
+            document.getElementById('hostSettings').style.display = 'block';
+            document.getElementById('hostSettings2').style.display = 'grid';
+            document.getElementById('startGameBtn').style.display = 'block';
+        } else {
+            document.getElementById('hostSettings').style.display = 'none';
+            document.getElementById('hostSettings2').style.display = 'none';
+            document.getElementById('startGameBtn').style.display = 'none';
+        }
+        updateConnectionStatus(true);
+    }
+
+    function startPolling() {
+        if (pollInterval) clearInterval(pollInterval);
+        pollInterval = setInterval(function() {
+            const roomData = storage.get('room_' + state.roomCode);
+            if (!roomData) {
+                updateConnectionStatus(false);
+                return;
+            }
+            updateConnectionStatus(true);
+            state.players = roomData.players;
+            updatePlayersList();
+            const quizActive = document.getElementById('quizScreen').classList.contains('active');
+            if (roomData.gameStarted && !quizActive) {
+                state.categories = roomData.categories;
+                state.winPoints = roomData.winPoints;
+                state.mistakesAllowed = roomData.mistakesAllowed;
+                state.usedQuestions = roomData.usedQuestions || [];
+                loadQuestions();
+                showScreen('quizScreen');
+                if (state.isHost) {
+                    nextQuestion();
+                }
+            }
+            if (quizActive) {
+                syncGameState();
+            }
+        }, 1000);
+    }
+
+    function updatePlayersList() {
+        const list = document.getElementById('playersList');
+        list.innerHTML = '';
+        state.players.forEach(function(player) {
+            const div = document.createElement('div');
+            div.style.cssText = 'display: flex; align-items: center; padding: 0.6rem; margin-bottom: 0.4rem; background: rgba(255, 255, 255, 0.05); border-radius: 8px; border-left: 3px solid ' + (player.isHost ? 'var(--gold)' : 'var(--blue)');
+            div.innerHTML = '<div style="width: 35px; height: 35px; background: var(--gold); border-radius: 50%; display: flex; align-items: center; justify-content: center; font-weight: 700; font-size: 1rem; color: var(--dark-blue); margin-right: 0.8rem;">' + player.name.charAt(0).toUpperCase() + '</div>' +
+                           '<div style="flex: 1; font-weight: 700; font-size: 0.9rem;">' + player.name + '</div>' +
+                           (player.isHost ? '<span style="background: var(--gold); color: var(--dark-blue); padding: 0.2rem 0.6rem; border-radius: 12px; font-size: 0.75rem; font-weight: 700;">HOST</span>' : '');
+            list.appendChild(div);
+        });
+    }
+
+    function copyRoomCode() {
+        navigator.clipboard.writeText(state.roomCode);
+        const btn = document.getElementById('copyCodeBtn');
+        const orig = btn.textContent;
+        btn.textContent = '✓ コピー完了';
+        setTimeout(function() {
+            btn.textContent = orig;
+        }, 2000);
+    }
+
+    document.getElementById('categoryGrid').addEventListener('click', function(e) {
+        if (!state.isHost) return;
+        const option = e.target.closest('.category-option');
+        if (!option) return;
+        option.classList.toggle('selected');
+    });
+
+    function startGameFromLobby() {
+        if (!state.isHost) return;
+        const selectedCategories = [];
+        document.querySelectorAll('.category-option.selected').forEach(function(opt) {
+            selectedCategories.push(opt.getAttribute('data-category'));
+        });
+        if (selectedCategories.length === 0) {
+            alert('少なくとも1つの出題範囲を選択してください');
+            return;
+        }
+        const winPoints = parseInt(document.getElementById('winPoints').value);
+        const mistakesAllowed = parseInt(document.getElementById('mistakesAllowed').value);
+        state.winPoints = winPoints;
+        state.mistakesAllowed = mistakesAllowed;
+        state.categories = selectedCategories;
+        const roomData = storage.get('room_' + state.roomCode);
+        roomData.gameStarted = true;
+        roomData.categories = selectedCategories;
+        roomData.winPoints = winPoints;
+        roomData.mistakesAllowed = mistakesAllowed;
+        roomData.currentRound = 1;
+        roomData.usedQuestions = [];
+        state.players.forEach(function(p) {
+            state.scores[p.name] = 0;
+            state.mistakes[p.name] = 0;
+        });
+        roomData.scores = state.scores;
+        roomData.mistakes = state.mistakes;
+        storage.set('room_' + state.roomCode, roomData);
+    }
+
+    function loadQuestions() {
+        let allQuestions = [];
+        state.categories.forEach(function(cat) {
+            if (questionDB[cat]) {
+                allQuestions = allQuestions.concat(questionDB[cat]);
+            }
+        });
+        state.questions = allQuestions;
+    }
+
+    function getRandomUnusedQuestion() {
+        const available = state.questions.filter(function(q) {
+            const key = JSON.stringify({q: q.q, a: q.a});
+            return state.usedQuestions.indexOf(key) === -1;
+        });
+        if (available.length === 0) {
+            state.usedQuestions = [];
+            return state.questions[Math.floor(Math.random() * state.questions.length)];
+        }
+        return available[Math.floor(Math.random() * available.length)];
+    }
+
+    function nextQuestion() {
+        if (!state.isHost) return;
+        
+        const hasWinner = state.players.some(function(p) {
+            return (state.scores[p.name] || 0) >= state.winPoints;
+        });
+        
+        if (hasWinner) {
+            const roomData = storage.get('room_' + state.roomCode);
+            roomData.showResults = true;
+            storage.set('room_' + state.roomCode, roomData);
+            showResults();
+            return;
+        }
+
+        const question = getRandomUnusedQuestion();
+        const key = JSON.stringify({q: question.q, a: question.a});
+        state.currentQuestion = question;
+        state.usedQuestions.push(key);
+        state.playerAnswers = {};
+        state.answeredPlayers = [];
+        state.buzzed = false;
+        state.answeringPlayer = null;
+        
+        const roomData = storage.get('room_' + state.roomCode);
+        roomData.currentQuestion = question;
+        roomData.currentRound = state.currentRound;
+        roomData.usedQuestions = state.usedQuestions;
+        roomData.playerAnswers = {};
+        roomData.answeredPlayers = [];
+        roomData.buzzed = false;
+        roomData.answeringPlayer = null;
+        storage.set('room_' + state.roomCode, roomData);
+        
+        displayQuestion();
+        startTimer();
+    }
+
+    function displayQuestion() {
+        if (!state.currentQuestion) return;
+        
+        document.getElementById('questionText').textContent = state.currentQuestion.q;
+        document.getElementById('currentRound').textContent = state.currentRound;
+        
+        const imgEl = document.getElementById('questionImage');
+        if (state.currentQuestion.championId) {
+            imgEl.src = 'https://ddragon.leagueoflegends.com/cdn/img/champion/splash/' + state.currentQuestion.championId + '_0.jpg';
+            imgEl.style.display = 'block';
+        } else {
+            imgEl.style.display = 'none';
+        }
+        
+        state.currentAnswer = '';
+        state.hasAnswered = false;
+        state.buzzed = false;
+        document.getElementById('buzzerSection').style.display = 'block';
+        document.getElementById('answerSection').style.display = 'none';
+        document.getElementById('buzzerBtn').disabled = false;
+        document.getElementById('answerProgress').innerHTML = '';
+        updateScoreboard();
+    }
+
+    function buzzerPressed() {
+        if (state.buzzed || state.hasAnswered) return;
+        playClick();
+        state.buzzed = true;
+        const roomData = storage.get('room_' + state.roomCode);
+        if (roomData.buzzed) {
+            alert('他のプレイヤーが先に回答ボタンを押しました');
+            state.buzzed = false;
+            return;
+        }
+        roomData.buzzed = true;
+        roomData.answeringPlayer = state.playerName;
+        storage.set('room_' + state.roomCode, roomData);
+        document.getElementById('buzzerBtn').disabled = true;
+    }
+
+    function syncGameState() {
+        const roomData = storage.get('room_' + state.roomCode);
+        if (!roomData) return;
+        
+        state.scores = roomData.scores || {};
+        state.mistakes = roomData.mistakes || {};
+        state.currentRound = roomData.currentRound || 1;
+        state.usedQuestions = roomData.usedQuestions || [];
+        
+        const currentQuestionKey = state.currentQuestion ? JSON.stringify({q: state.currentQuestion.q, a: state.currentQuestion.a}) : null;
+        const roomQuestionKey = roomData.currentQuestion ? JSON.stringify({q: roomData.currentQuestion.q, a: roomData.currentQuestion.a}) : null;
+        
+        if (roomQuestionKey && roomQuestionKey !== currentQuestionKey) {
+            state.currentQuestion = roomData.currentQuestion;
+            state.playerAnswers = {};
+            state.answeredPlayers = [];
+            state.currentAnswer = '';
+            state.buzzed = false;
+            state.answeringPlayer = null;
+            state.hasAnswered = false;
+            displayQuestion();
+        }
+        
+        if (roomData.buzzed && roomData.answeringPlayer) {
+            state.buzzed = true;
+            state.answeringPlayer = roomData.answeringPlayer;
+            if (state.answeringPlayer === state.playerName && !state.hasAnswered && document.getElementById('answerSection').style.display === 'none') {
+                document.getElementById('buzzerSection').style.display = 'none';
+                document.getElementById('answerSection').style.display = 'flex';
+                document.getElementById('answerDisplay').textContent = '';
+                state.currentAnswer = '';
+                generateChoices();
+            } else if (state.answeringPlayer !== state.playerName) {
+                document.getElementById('buzzerBtn').disabled = true;
+            }
+        }
+        
+        if (roomData.answeredPlayers) {
+            updateAnswerProgress(roomData.answeredPlayers);
+        }
+        
+        updateScoreboard();
+        
+        if (roomData.showResults) {
+            clearInterval(pollInterval);
+            showResults();
+            return;
+        }
+        
+        const activePlayers = roomData.players.filter(function(p) {
+            return (roomData.mistakes[p.name] || 0) <= state.mistakesAllowed;
+        });
+        
+        const allAnswered = activePlayers.every(function(p) {
+            return roomData.answeredPlayers.some(function(ap) {
+                return ap.name === p.name;
+            });
+        });
+        
+        if (allAnswered && state.isHost && roomData.answeredPlayers.length > 0) {
+            clearInterval(state.timer);
+            calculateScores();
+            setTimeout(function() {
+                state.currentRound++;
+                nextQuestion();
+            }, 3000);
+        }
+    }
+
+    function generateChoices() {
+        const question = state.currentQuestion;
+        
+        if (question.choices) {
+            state.currentChoices = question.choices.slice();
+            renderChoices();
+        } else {
+            generateTextChoices(0);
+        }
+    }
+
+    function renderChoices() {
+        const grid = document.getElementById('choiceGrid');
+        grid.innerHTML = '';
+        state.currentChoices.forEach(function(choice) {
+            const btn = document.createElement('button');
+            btn.className = 'choice-btn';
+            btn.textContent = choice;
+            btn.onclick = function() { 
+                if (!state.hasAnswered) {
+                    selectChoice(choice);
+                }
+            };
+            grid.appendChild(btn);
+        });
+    }
+
+    function generateTextChoices(position) {
+        const answer = state.currentQuestion.a;
+        if (position >= answer.length) return;
+        
+        const correctChar = answer.charAt(position);
+        const allChars = 'あいうえおかきくけこさしすせそたちつてとなにぬねのはひふへほまみむめもやゆよらりるれろわをんがぎぐげござじずぜぞだぢづでどばびぶべぼぱぴぷぺぽゃゅょっー';
+        const choices = [correctChar];
+        
+        while (choices.length < 4) {
+            const randomChar = allChars.charAt(Math.floor(Math.random() * allChars.length));
+            if (choices.indexOf(randomChar) === -1 && randomChar !== correctChar) {
+                choices.push(randomChar);
+            }
+        }
+        
+        for (let i = choices.length - 1; i > 0; i--) {
+            const j = Math.floor(Math.random() * (i + 1));
+            const temp = choices[i];
+            choices[i] = choices[j];
+            choices[j] = temp;
+        }
+        
+        state.currentChoices = choices;
+        renderChoices();
+    }
+
+    function selectChoice(char) {
+        if (state.hasAnswered) return;
+        playClick();
+        state.currentAnswer += char;
+        document.getElementById('answerDisplay').textContent = state.currentAnswer;
+        
+        if (state.currentQuestion.choices) {
+            submitAnswer();
+        } else if (state.currentAnswer.length < state.currentQuestion.a.length) {
+            generateTextChoices(state.currentAnswer.length);
+        } else {
+            submitAnswer();
+        }
+    }
+
+    function submitAnswer() {
+        if (state.hasAnswered) return;
+        state.hasAnswered = true;
+        
+        const answer = state.currentAnswer;
+        const correct = answer === state.currentQuestion.a;
+        const roomData = storage.get('room_' + state.roomCode);
+        const timestamp = Date.now();
+        
+        if (!roomData.playerAnswers) {
+            roomData.playerAnswers = {};
+        }
+        roomData.playerAnswers[state.playerName] = {
+            answer: answer,
+            correct: correct,
+            timestamp: timestamp
+        };
+        
+        if (!roomData.answeredPlayers) {
+            roomData.answeredPlayers = [];
+        }
+        roomData.answeredPlayers.push({
+            name: state.playerName,
+            timestamp: timestamp,
+            correct: correct
+        });
+        
+        if (!correct) {
+            roomData.mistakes[state.playerName] = (roomData.mistakes[state.playerName] || 0) + 1;
+        }
+        
+        storage.set('room_' + state.roomCode, roomData);
+        
+        document.querySelectorAll('.choice-btn').forEach(function(btn) {
+            btn.disabled = true;
+        });
+        document.getElementById('answerSection').style.display = 'none';
+        
+        if (correct) {
+            playCorrect();
+        } else {
+            playWrong();
+        }
+    }
+
+    function updateAnswerProgress(answeredPlayers) {
+        const progress = document.getElementById('answerProgress');
+        progress.innerHTML = '';
+        answeredPlayers.forEach(function(player, index) {
+            const div = document.createElement('div');
+            const isFirst = index === 0 && player.correct;
+            div.className = 'progress-item' + (player.correct ? ' answered' : ' wrong');
+            const badgeClass = player.correct ? (isFirst ? 'first' : 'correct') : 'incorrect';
+            const badgeText = player.correct ? (isFirst ? '1位' : '正解') : '不正解';
+            div.innerHTML = '<div class="progress-name">' + player.name + '</div>' +
+                           '<div class="progress-badge ' + badgeClass + '">' + badgeText + '</div>';
+            progress.appendChild(div);
+        });
+    }
+
+    function startTimer() {
+        state.timeLeft = 30;
+        const timerEl = document.getElementById('timer');
+        timerEl.textContent = state.timeLeft;
+        timerEl.classList.remove('warning');
+        clearInterval(state.timer);
+        state.timer = setInterval(function() {
+            state.timeLeft--;
+            timerEl.textContent = state.timeLeft;
+            if (state.timeLeft <= 10) {
+                timerEl.classList.add('warning');
+            }
+            if (state.timeLeft <= 0) {
+                clearInterval(state.timer);
+                if (state.isHost) {
+                    calculateScores();
+                    setTimeout(function() {
+                        state.currentRound++;
+                        nextQuestion();
+                    }, 3000);
+                }
+            }
+        }, 1000);
+    }
+
+    function calculateScores() {
+        const roomData = storage.get('room_' + state.roomCode);
+        const answeredPlayers = roomData.answeredPlayers || [];
+        const correctAnswers = answeredPlayers.filter(function(p) {
+            return p.correct;
+        }).sort(function(a, b) {
+            return a.timestamp - b.timestamp;
+        });
+        
+        if (correctAnswers.length > 0) {
+            roomData.scores[correctAnswers[0].name] = (roomData.scores[correctAnswers[0].name] || 0) + 2;
+            for (let i = 1; i < correctAnswers.length; i++) {
+                roomData.scores[correctAnswers[i].name] = (roomData.scores[correctAnswers[i].name] || 0) + 1;
+            }
+        }
+        
+        storage.set('room_' + state.roomCode, roomData);
+    }
+
+    function updateScoreboard() {
+        const scoreList = document.getElementById('scoreList');
+        scoreList.innerHTML = '';
+        const sortedPlayers = state.players.slice().sort(function(a, b) {
+            return (state.scores[b.name] || 0) - (state.scores[a.name] || 0);
+        });
+        sortedPlayers.forEach(function(player, index) {
+            const div = document.createElement('div');
+            div.className = 'score-item' + (index === 0 ? ' first' : '');
+            const mistakeCount = state.mistakes[player.name] || 0;
+            const isEliminated = mistakeCount > state.mistakesAllowed;
+            div.innerHTML = '<span class="score-name">' + player.name + (isEliminated ? ' 💀' : '') + '</span>' +
+                           '<span class="score-points">' + (state.scores[player.name] || 0) + 'pt</span>';
+            if (mistakeCount > 0 && !isEliminated) {
+                const mistakesDiv = document.createElement('div');
+                mistakesDiv.className = 'mistakes-info';
+                mistakesDiv.textContent = 'お手付き: ' + mistakeCount + '/' + state.mistakesAllowed;
+                div.appendChild(mistakesDiv);
+            }
+            scoreList.appendChild(div);
+        });
+    }
+
+    function showResults() {
+        if (pollInterval) {
+            clearInterval(pollInterval);
+            pollInterval = null;
+        }
+        showScreen('resultsScreen');
+        const sortedPlayers = state.players.slice().sort(function(a, b) {
+            return (state.scores[b.name] || 0) - (state.scores[a.name] || 0);
+        });
+        document.getElementById('winnerName').textContent = '🎉 ' + sortedPlayers[0].name + ' 優勝! 🎉';
+        const finalScores = document.getElementById('finalScores');
+        finalScores.innerHTML = '';
+        sortedPlayers.forEach(function(player, index) {
+            const div = document.createElement('div');
+            div.style.cssText = 'font-size: 1.1rem; padding: 0.8rem; margin: 0.4rem 0; background: rgba(255, 255, 255, 0.05); border-radius: 8px;';
+            div.innerHTML = '<span style="display: inline-block; width: 35px; height: 35px; background: var(--gold); color: var(--dark-blue); border-radius: 50%; line-height: 35px; margin-right: 0.8rem; font-weight: 700; text-align: center;">' + (index + 1) + '</span>' +
+                           player.name + ': ' + (state.scores[player.name] || 0) + 'pt';
+            finalScores.appendChild(div);
+        });
+        playCorrect();
+        setTimeout(playCorrect, 300);
+        setTimeout(playCorrect, 600);
+    }
+
+    function continueGame() {
+        const roomData = storage.get('room_' + state.roomCode);
+        if (!roomData) {
+            alert('ルームデータが見つかりません');
+            location.reload();
+            return;
+        }
+        
+        roomData.showResults = false;
+        roomData.gameStarted = true;
+        state.players.forEach(function(p) {
+            roomData.scores[p.name] = 0;
+            roomData.mistakes[p.name] = 0;
+            state.scores[p.name] = 0;
+            state.mistakes[p.name] = 0;
+        });
+        roomData.currentRound = 1;
+        roomData.usedQuestions = [];
+        state.currentRound = 1;
+        state.usedQuestions = [];
+        
+        storage.set('room_' + state.roomCode, roomData);
+        
+        showScreen('quizScreen');
+        startPolling();
+        
+        if (state.isHost) {
+            setTimeout(function() {
+                nextQuestion();
+            }, 500);
+        }
+    }
+
+    function endGame() {
+        if (pollInterval) {
+            clearInterval(pollInterval);
+        }
+        location.reload();
+    }
+
+    function init() {
+        document.getElementById('createRoomBtn').addEventListener('click', createRoom);
+        document.getElementById('joinRoomBtn').addEventListener('click', showJoinRoom);
+        document.getElementById('backToHomeBtn').addEventListener('click', showHome);
+        document.getElementById('joinBtn').addEventListener('click', joinRoom);
+        document.getElementById('copyCodeBtn').addEventListener('click', copyRoomCode);
+        document.getElementById('startGameBtn').addEventListener('click', startGameFromLobby);
+        document.getElementById('buzzerBtn').addEventListener('click', buzzerPressed);
+        document.getElementById('continueBtn').addEventListener('click', continueGame);
+        document.getElementById('endBtn').addEventListener('click', endGame);
+        window.addEventListener('beforeunload', function() {
+            if (pollInterval) {
+                clearInterval(pollInterval);
+            }
+        });
+    }
+
+    if (document.readyState === 'loading') {
+        document.addEventListener('DOMContentLoaded', init);
+    } else {
+        init();
+    }
+})();
+    </script>
+</body>
+</html>
